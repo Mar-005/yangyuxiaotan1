@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>洋芋小摊 · 模拟经营</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; font-family:'Segoe UI','Microsoft YaHei',sans-serif; }
+  body { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#2e1e0f; padding:16px; }
+
+  #game-container {
+    position:relative; width:1000px; height:650px;
+    background:transparent; border:none; box-shadow:none; border-radius:0;
+    overflow:hidden; transition:filter .2s;
+  }
+  .scene { position:absolute; inset:0; display:flex; flex-direction:column; }
+  .hidden { display:none !important; }
+
+  /* ===== 开始界面 ===== */
+  #start-screen {
+    background-image:url('https://i.postimg.cc/Njjqgfqj/wei-xin-tu-pian-20261114193840-26-127.jpg');
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    z-index:20; justify-content:center; align-items:center;
+  }
+  .btn-start {
+    background:#e8a35c; border:none; border-radius:60px; padding:14px 50px;
+    font-size:30px; font-weight:bold; color:#34200b;
+    box-shadow:0 8px 0 #8f5e2e,0 10px 15px rgba(0,0,0,.3);
+    cursor:pointer; transition:.05s linear; letter-spacing:6px;
+    border:2px solid #ffe1a9;
+    position:relative; top:7cm;
+  }
+  .btn-start:active { transform:translateY(8px); box-shadow:0 0 0 #8f5e2e,0 10px 15px rgba(0,0,0,.3); }
+
+  /* ===== 营业界面 ===== */
+  #business-screen {
+    background-image:url('https://i.postimg.cc/x11D0TDN/wei-xin-tu-pian-20261114193841-27-127.jpg');
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    z-index:10;
+  }
+
+  /* ===== 顶部 HUD ===== */
+  .top-bar {
+    position:absolute; top:0.5cm; left:0; width:100%; height:52px; z-index:300;
+    display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+    pointer-events:none;
+  }
+  .top-left, .top-right { display:flex; gap:10px; align-items:center; pointer-events:auto; }
+  .hud-chip {
+    background:#fef6e6dd; border:2px solid #a77b4b; border-radius:30px;
+    padding:6px 16px; font-weight:bold; color:#2d1c0a; font-size:16px;
+    box-shadow:0 3px 0 #8f5e2e; backdrop-filter:blur(4px);
+  }
+  .hud-btn {
+    background:#fef6e6dd; border:2px solid #a77b4b; border-radius:30px;
+    padding:6px 14px; font-weight:bold; color:#2d1c0a; font-size:18px;
+    box-shadow:0 3px 0 #8f5e2e; cursor:pointer; backdrop-filter:blur(4px);
+  }
+  .hud-btn:active { transform:translateY(3px); box-shadow:none; }
+
+  /* ===== 设置浮层 ===== */
+  #settings-pop, #start-settings-pop {
+    position:absolute; top:calc(58px + 0.5cm); left:16px; background:#fbe9d2; border:3px solid #a77b4b;
+    border-radius:20px; padding:14px 20px; z-index:400; box-shadow:0 8px 0 #8f5e2e;
+    display:flex; flex-direction:column; gap:10px; width:240px;
+  }
+  #settings-pop .row, #start-settings-pop .row { display:flex; flex-direction:column; gap:4px; font-weight:bold; color:#3f2a11; font-size:14px; }
+  #settings-pop input, #start-settings-pop input { width:100%; accent-color:#b47d3f; }
+  .back-home-btn {
+    margin-top:4px; background:#e8a35c; border:2px solid #8f5e2e; border-radius:30px;
+    padding:8px 14px; font-weight:bold; color:#34200b; font-size:16px;
+    box-shadow:0 4px 0 #8f5e2e; cursor:pointer; transition:.05s linear; width:100%;
+  }
+  .back-home-btn:active { transform:translateY(4px); box-shadow:none; }
+
+  /* ===== 上半区 ===== */
+  .upper-area {
+    height:50%; position:relative; background:transparent;
+    overflow:visible;
+    z-index: 5;
+  }
+  .customer-area {
+    position:absolute; inset:0;
+    pointer-events:none;
+  }
+  .customer-item {
+    position:absolute;
+    display:block;
+    width:200px;
+    transform:translateX(-50%);
+    cursor:grab;
+    z-index: 10;
+    pointer-events:auto;
+  }
+  .customer-sprite {
+    width:200px; height:200px;
+    border:none; box-shadow:none;
+    background:transparent;
+    border-radius:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .1s, filter .1s;
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    color:#c00; font-size:14px; font-weight:bold; line-height:1.2; text-align:center;
+  }
+  .customer-item.dragover .customer-sprite {
+    transform:scale(1.06);
+    filter: drop-shadow(0 0 14px #ffd966);
+  }
+  .customer-dialog {
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    background:#fef6e6ee;
+    border-radius:16px;
+    padding:8px 14px;
+    font-size:15px;
+    font-weight:bold;
+    color:#2d1c0a;
+    width:max-content;
+    max-width:220px;
+    word-break:break-word;
+    text-align:center;
+    border:3px solid #a77b4b;
+    box-shadow:0 5px 0 #8f5e2e;
+    white-space:normal;
+    line-height:1.35;
+    z-index:2;
+  }
+  .customer-item.dialog-right .customer-dialog { left: calc(100% + 10px); }
+  .customer-item.dialog-left  .customer-dialog { right: calc(100% + 10px); }
+  .customer-dialog .continue-btn {
+    display:block; margin:6px auto 0; background:#e8a35c; border:2px solid #8f5e2e;
+    border-radius:20px; padding:3px 18px; font-size:14px; font-weight:bold;
+    color:#34200b; cursor:pointer;
+  }
+
+  /* 嬢嬢：左下角 */
+  .player-sprite {
+    position:absolute; bottom:10px; left:16px;
+    width:64px; height:64px; border-radius:50% 50% 30% 30%;
+    border:4px solid #4a2e14; box-shadow:0 6px 0 #6b4a27;
+    background-image:url('https://i.postimg.cc/y884VY4S/wei-xin-tu-pian-20261114201625-30-127.png');
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    z-index:150;
+  }
+
+  /* ===== 嬢嬢头顶聊天框 ===== */
+  .player-bubble {
+    position:absolute;
+    left: 8px;
+    bottom: 82px;
+    max-width: 220px;
+    background: #fef6e6ee;
+    border: 3px solid #a77b4b;
+    border-radius: 16px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #2d1c0a;
+    box-shadow: 0 5px 0 #8f5e2e;
+    line-height: 1.35;
+    z-index: 250;
+    display: none;
+    white-space: normal;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: bubbleIn .25s ease-out;
+    transition: transform .1s, filter .1s;
+  }
+  .player-bubble.show { display: block; }
+  .player-bubble:hover { transform: translateY(-2px); filter: drop-shadow(0 0 8px #ffd966); }
+  .player-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -9px; left: 18px;
+    border: 7px solid transparent;
+    border-top-color: #a77b4b;
+  }
+  .player-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 20px;
+    border: 5px solid transparent;
+    border-top-color: #fef6e6;
+    z-index: 1;
+  }
+  .player-bubble .bubble-tip {
+    display: block;
+    font-size: 11px;
+    color: #a77b4b;
+    margin-top: 4px;
+    font-weight: bold;
+  }
+  @keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== 垃圾桶 ===== */
+  .trash-area {
+    position:absolute;
+    left: 92px; bottom: 10px;
+    width: 64px; height: 64px;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column;
+    font-size: 38px; line-height:1;
+    cursor:pointer;
+    z-index: 150;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.4));
+    transition: transform .1s, filter .1s;
+    border-radius: 12px;
+  }
+  .trash-area.dragover { transform: scale(1.18); filter: drop-shadow(0 0 14px #ff6666); }
+  .trash-hint {
+    font-size: 10px;
+    color: #fff;
+    text-shadow: 0 1px 3px #000, 0 0 6px #000;
+    white-space: nowrap;
+    margin-top: 2px;
+    font-weight: bold;
+  }
+
+  /* ===== 下半桌面 ===== */
+  .table-area { height:50%; background:transparent; position:relative; }
+  .ingredients-panel {
+    position:absolute; left:0; bottom:8px;
+    display:flex; align-items:flex-end; gap:0;
+    z-index: auto; overflow:visible;
+  }
+  .left-groups { display:flex; flex-direction:column; gap:10px; overflow:visible; }
+  .ingredient-group {
+    display:flex; flex-direction:column; gap:4px;
+    align-items:flex-start; overflow:visible; position: relative;
+  }
+  .spice-group { transform: translate(1cm, -3.5cm); z-index: 10; }
+  .herb-group  { transform: translate(10.5cm, -6cm); z-index: 10; }
+  .raw-group   { transform: translate(3cm, -2cm); z-index: 3; }
+
+  .row-horizontal { display:flex; gap: 0; flex-wrap:nowrap; overflow:visible; }
+
+  #spices-row .ingredient-item { margin-right: -50px; }
+  #spices-row .ingredient-item:last-child { margin-right: 0; }
+  #herbs-row .ingredient-item { margin-right: 4px; }
+  #herbs-row .ingredient-item:last-child { margin-right: 0; }
+
+  .grid-2col-lg {
+    display:grid;
+    grid-template-columns: repeat(2, 165px);
+    gap: 0;
+    overflow:visible;
+  }
+  .grid-2col-lg .ingredient-item { margin-right: -58px; margin-bottom: -80px; }
+
+  .ingredient-item {
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:center;
+    cursor:pointer;
+    border:none; box-shadow:none; background-color:transparent; border-radius:0;
+    transition:transform .08s;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:bold; color:#2d1c0a;
+    position:relative;
+  }
+  .ingredient-item.md { width:95px; height:95px; }
+  .ingredient-item.lg { width:165px; height:165px; }
+  .ingredient-item:active { transform:translateY(3px); }
+  .ingredient-item.selected {
+    outline: 4px solid #ffd966;
+    outline-offset: 2px;
+    transform:translateY(-2px);
+    filter: drop-shadow(0 0 8px #ffd966);
+    z-index:20;
+  }
+
+  /* ===== 出锅区域 ===== */
+  .pot-area {
+    position:absolute; right: 8px; bottom: calc(8px + 2cm);
+    width:180px; height:180px;
+    background:transparent; border:none; box-shadow:none; border-radius:0;
+    z-index: 6; touch-action:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pot-area.cookable { filter: drop-shadow(0 0 16px #ffd966); cursor:grab; }
+  .pot-food {
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:147px; height:147px;
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+    display:none;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.35));
+  }
+  .pot-food.visible { display:block; }
+  .pot-empty-hint {
+    font-size:14px; color:#fff; text-shadow:0 1px 3px #000;
+    opacity:.6; text-align:center; pointer-events:none;
+  }
+  .pot-label {
+    position:absolute; bottom:-22px; left:50%;
+    transform:translateX(-50%);
+    font-size:12px;
+    background:transparent; border:none; box-shadow:none; padding:0;
+    max-width:200px; text-align:center;
+    color:#fff;
+    text-shadow:0 1px 3px #000, 0 0 6px #000;
+    white-space:normal; word-break:break-all; line-height:1.3;
+  }
+
+  #drag-ghost {
+    position:fixed; width:110px; height:110px; border-radius:50%;
+    background:#f3c26b; border:4px solid #8f5e2e; display:flex;
+    align-items:center; justify-content:center; font-size:48px;
+    box-shadow:0 8px 18px rgba(0,0,0,.4); pointer-events:none;
+    z-index:9999; transform:translate(-50%,-50%);
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+  }
+
+  .toast {
+    position:absolute; top:20%; left:50%; transform:translateX(-50%);
+    background:#fef6e6; border:4px solid #b47d3f; border-radius:40px;
+    padding:10px 30px; font-weight:bold; font-size:20px; color:#2d1c0a;
+    box-shadow:0 8px 0 #8f5e2e; z-index:500; white-space:nowrap; pointer-events:none;
+    animation:toastIn .25s ease-out;
+  }
+  @keyframes toastIn { from { opacity:0; transform:translate(-50%,-14px);} to {opacity:1;transform:translate(-50%,0);} }
+
+  /* ===== 结局界面（已换成图片链接） ===== */
+  #ending-screen {
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://i.postimg.cc/cCz1QgNk/dou-bao.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index:600; display:flex; flex-direction:column;
+    justify-content:center; align-items:center; color:#fff;
+  }
+  .ending-text {
+    font-size:46px; font-weight:bold; text-shadow:0 0 20px gold; margin:14px;
+    background:#00000099; padding:18px 46px; border-radius:40px; border:3px solid #ffd966;
+  }
+  .ending-sub { font-size:26px; margin-top:22px; color:#ffd966; }
+  .ending-btn {
+    margin-top:40px; background:#e8a35c; border:3px solid #8f5e2e; border-radius:50px;
+    padding:12px 46px; font-size:24px; font-weight:bold; color:#34200b;
+    box-shadow:0 6px 0 #8f5e2e; cursor:pointer;
+  }
+  .ending-btn:active { transform:translateY(6px); box-shadow:none; }
+</style>
+</head>
+<body>
+<div id="game-container">
+
+  <!-- ===== 开始界面 ===== -->
+  <div id="start-screen" class="scene">
+    <div class="top-bar">
+      <div class="top-left">
+        <button class="hud-btn" id="start-btn-settings">⚙️</button>
+        <div class="hud-chip">📅 第 <span id="start-day-count">1</span> 天</div>
+      </div>
+      <div class="top-right">
+        <div class="hud-chip">💰 <span id="start-coin">0</span></div>
+      </div>
+    </div>
+
+    <div id="start-settings-pop" class="hidden">
+      <div class="row">☀️ 亮度 <input type="range" id="start-brightness" min="0.5" max="1.5" value="1" step="0.1"></div>
+      <div class="row">🔊 音量 <input type="range" id="start-volume" min="0" max="1" value="0.7" step="0.1"></div>
+    </div>
+
+    <button class="btn-start" id="btn-start">开始营业</button>
+  </div>
+
+  <!-- ===== 营业界面 ===== -->
+  <div id="business-screen" class="scene hidden">
+
+    <div class="top-bar">
+      <div class="top-left">
+        <button class="hud-btn" id="btn-settings">⚙️</button>
+        <div class="hud-chip">📅 第 <span id="day-count">1</span> 天</div>
+      </div>
+      <div class="top-right">
+        <div class="hud-chip">💰 <span id="coin-count">0</span></div>
+      </div>
+    </div>
+
+    <div id="settings-pop" class="hidden">
+      <div class="row">☀️ 亮度 <input type="range" id="biz-brightness" min="0.5" max="1.5" value="1" step="0.1"></div>
+      <div class="row">🔊 音量 <input type="range" id="biz-volume" min="0" max="1" value="0.7" step="0.1"></div>
+      <button class="back-home-btn" id="btn-back-home">🏠 返回主界面</button>
+    </div>
+
+    <div class="upper-area">
+      <div class="customer-area" id="customer-area"></div>
+    </div>
+
+    <div class="table-area">
+      <div class="ingredients-panel">
+        <div class="left-groups">
+          <div class="ingredient-group spice-group">
+            <div class="row-horizontal" id="spices-row"></div>
+          </div>
+          <div class="ingredient-group herb-group">
+            <div class="row-horizontal" id="herbs-row"></div>
+          </div>
+        </div>
+        <div class="ingredient-group raw-group">
+          <div class="grid-2col-lg" id="raws-row"></div>
+        </div>
+      </div>
+
+      <div class="pot-area" id="pot-area">
+        <div class="pot-food" id="pot-food"></div>
+        <div class="pot-empty-hint" id="pot-empty-hint">出锅区</div>
+        <div class="pot-label" id="pot-label">空</div>
+      </div>
+    </div>
+
+    <div class="player-sprite"></div>
+    <div class="player-bubble" id="player-bubble">
+      <span id="player-bubble-text"></span>
+      <span class="bubble-tip">👆 点击让顾客再说一遍</span>
+    </div>
+    <div class="trash-area" id="trash-area">
+      🗑️
+      <div class="trash-hint">丢弃 -1💰</div>
+    </div>
+  </div>
+
+  <!-- ===== 结局界面 ===== -->
+  <div id="ending-screen" class="scene hidden">
+    <div class="ending-text">🎉 今天结束</div>
+    <div class="ending-sub">恭喜你，请迎接美好的明天吧</div>
+    <button class="ending-btn" id="btn-next-day">继续营业</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ============ 核心配置 ============
+  const COIN_GOAL = 25;
+  const COOK_FULL_TIME = 35000;      // 35 秒后变生气
+  const DIALOG_HIDE_TIME = 10000;    // 顾客重说要求后持续 10 秒，然后回到生气语言
+  const NEXT_CUSTOMER_DELAY = 5000;  // 顾客离开后 5 秒迎接下一位
+
+  // ============ 顾客数据（已改成图片链接） ============
+  const CUSTOMER_TYPES = [
+    { id:'girl', name:'小女孩',
+      normalEmoji:'https://i.postimg.cc/bY1jgB9v/wei-xin-tu-pian-20261114193810-14-127.png',
+      upsetEmoji:'https://i.postimg.cc/66CNcmfv/wei-xin-tu-pian-20261114193812-16-127.png',
+      normalMsgTemplate:'嬢嬢，来个${food}，加${spice}和${herb}',
+      upsetMsg:'嬢嬢好了吗',
+      thanksMsg:'谢谢嬢嬢，明天见' },
+    { id:'worker', name:'打工人',
+      normalEmoji:'https://i.postimg.cc/44pTPSbj/wei-xin-tu-pian-20261114193808-13-127.png',
+      upsetEmoji:'https://i.postimg.cc/BZ2GpVcr/wei-xin-tu-pian-20261114193806-11-127.png',
+      normalMsgTemplate:'你好，来一份${food}，${spice}和${herb}都要',
+      upsetMsg:'好了吗？还有多久呀',
+      thanksMsg:'谢谢你' },
+    { id:'grandma', name:'老奶奶',
+      normalEmoji:'https://i.postimg.cc/2ydR51ST/wei-xin-tu-pian-20261114193803-9-127.png',
+      upsetEmoji:'https://i.postimg.cc/cC7yJvLw/wei-xin-tu-pian-20261114193801-8-127.png',
+      normalMsgTemplate:'姑娘吃饭了吗？给老婆子我来一份${food}，${spice}和${herb}别忘了',
+      upsetMsg:'姑娘干这活累吗？一份多久完成呀',
+      thanksMsg:'姑娘谢谢你，下次见' },
+    { id:'grandpa', name:'老爷爷',
+      normalEmoji:'https://i.postimg.cc/BbffsT4b/wei-xin-tu-pian-20261114193800-7-127.png',
+      upsetEmoji:'https://i.postimg.cc/qqHH0s4R/wei-xin-tu-pian-20261114193759-6-127.png',
+      normalMsgTemplate:'姑娘，我赶着去赶集，快来份${food}，${spice}和${herb}',
+      upsetMsg:'还有多久呀赶集都过半了',
+      thanksMsg:'谢谢' },
+    { id:'beautician', name:'美妆师',
+      normalEmoji:'https://i.postimg.cc/j2YYKHtd/wei-xin-tu-pian-20261114193755-3-127.png',
+      upsetEmoji:'https://i.postimg.cc/yxCCBmsN/wei-xin-tu-pian-20261114193753-2-127.png',
+      normalMsgTemplate:'姐来份${food}，要${spice}和${herb}',
+      upsetMsg:'姐，前面还有几份，开始做我的了吗？',
+      thanksMsg:'谢谢姐，我下次再来' },
+  ];
+
+  const RAW_TO_FOOD = { '土豆丝':'洋芋粑', '土豆丸':'洋芋丸子', '土豆块':'洋芋块拌', '土豆条':'炸洋芋' };
+  const FOOD_LIST = ['洋芋粑','洋芋丸子','洋芋块拌','炸洋芋'];
+
+  // ===== 食物图片（链接） =====
+  const FOOD_IMG = {
+    '洋芋粑':   'https://i.postimg.cc/rpDBrnpD/wei-xin-tu-pian-20261114232924-5-4.png',
+    '洋芋丸子': 'https://i.postimg.cc/2SSRz8Rz/wei-xin-tu-pian-20261114193822-23-127.png',
+    '洋芋块拌': 'https://i.postimg.cc/TPBZqVy3/wei-xin-tu-pian-20261114232924-7-4.png',
+    '炸洋芋':   'https://i.postimg.cc/43jrb6KN/wei-xin-tu-pian-20261114232924-8-4.png',
+  };
+
+  // ===== 食材图片（链接） =====
+  const ITEM_IMG = {
+    '辣椒':'https://i.postimg.cc/DwpVmknt/wei-xin-tu-pian-20261114202143-44-127.png',
+    '花椒':'https://i.postimg.cc/dVNMDPwS/wei-xin-tu-pian-20261114202142-43-127.png',
+    '胡椒':'https://i.postimg.cc/kgg3nX3y/wei-xin-tu-pian-20261114202140-41-127.png',
+    '盐'  :'https://i.postimg.cc/rwwX8FXS/wei-xin-tu-pian-20261114202139-40-127.png',
+    '味精':'https://i.postimg.cc/fRq4knDr/wei-xin-tu-pian-20261114202141-42-127.png',
+    '葱花':'https://i.postimg.cc/cJvpn9JZ/wei-xin-tu-pian-20261114202149-48-127.png',
+    '香菜':'https://i.postimg.cc/zG2m3Z8s/wei-xin-tu-pian-20261114202146-46-127.png',
+    '蒜末':'https://i.postimg.cc/s2Mkh62r/wei-xin-tu-pian-20261114202147-47-127.png',
+    '土豆丝':'https://i.postimg.cc/fTZQrf8p/wei-xin-tu-pian-20261114193816-19-127.png',
+    '土豆丸':'https://i.postimg.cc/SNqbvfg9/wei-xin-tu-pian-20261114193815-18-127.png',
+    '土豆块':'https://i.postimg.cc/Yq3BKLP5/wei-xin-tu-pian-20261114193817-20-127.png',
+    '土豆条':'https://i.postimg.cc/c4ZGbBFC/wei-xin-tu-pian-20261114193813-17-127.png',
+  };
+
+  const SPICES = ['辣椒','花椒','胡椒','盐','味精'];
+  const HERBS  = ['葱花','香菜','蒜末'];
+  const RAWS   = ['土豆丝','土豆丸','土豆块','土豆条'];
+
+  // ============ 状态 ============
+  let coins = 0;
+  let day = 1;
+  let gameActive = false;
+  let currentCustomer = null;
+  let customerRespawnTimer = null;
+
+  let pot = {
+    selectedSpice: null,
+    selectedHerb: null,
+    selectedRaw: null,
+    cooked: false
+  };
+
+  let audioVolume = 0.7;
+  let bgmMuted = false;
+
+  // ============ DOM ============
+  const $ = id => document.getElementById(id);
+  const startScreen   = $('start-screen');
+  const businessScreen= $('business-screen');
+  const endingScreen  = $('ending-screen');
+  const startCoin     = $('start-coin');
+  const coinCount     = $('coin-count');
+  const dayCount      = $('day-count');
+  const startDayCount = $('start-day-count');
+  const customerArea  = $('customer-area');
+  const potArea       = $('pot-area');
+  const potFood       = $('pot-food');
+  const potLabel      = $('pot-label');
+  const potEmptyHint  = $('pot-empty-hint');
+  const trashArea     = $('trash-area');
+  const playerBubble  = $('player-bubble');
+  const playerBubbleText = $('player-bubble-text');
+  const settingsPop   = $('settings-pop');
+  const startSettingsPop = $('start-settings-pop');
+
+  const spicesRow = $('spices-row');
+  const herbsRow  = $('herbs-row');
+  const rawsRow   = $('raws-row');
+
+  // ============================================================
+  //  ============ 内置 BGM：Web Audio 实时合成 ============
+  // ============================================================
+  const midiToFreq = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  const BGM_TRACKS = {
+    business: {
+      bpm: 138,
+      rate: 1.0,
+      melody: [
+        72,76,79,76, 72,76,79,81,
+        79,76,72,76, 74,76,77,74,
+        72,76,79,76, 84,83,81,79,
+        77,76,74,72, 72,null,null,null,
+        72,76,79,76, 72,76,79,81,
+        79,76,72,76, 74,76,77,74,
+        81,79,77,76, 74,72,74,76,
+        79,76,74,72, 72,null,null,null
+      ],
+      bass: [
+        48,null,55,null, 48,null,55,null,
+        43,null,50,null, 43,null,50,null,
+        45,null,52,null, 45,null,52,null,
+        41,null,48,null, 41,null,48,null,
+        48,null,55,null, 48,null,55,null,
+        43,null,50,null, 43,null,50,null,
+        41,null,48,null, 41,null,48,null,
+        48,null,55,null, 48,null,55,null
+      ]
+    },
+    ending: {
+      bpm: 112,
+      rate: 0.75,
+      melody: [
+        76,79,81,79, 76,74,72,74,
+        76,79,81,84, 83,81,79,76,
+        77,81,84,81, 79,77,76,74,
+        72,74,76,79, 72,null,null,null,
+        76,79,81,79, 76,74,72,74,
+        76,79,81,84, 83,81,79,76,
+        81,79,77,76, 74,72,74,76,
+        77,76,74,72, 72,null,null,null
+      ],
+      bass: [
+        48,null,55,null, 48,null,55,null,
+        43,null,50,null, 43,null,50,null,
+        45,null,52,null, 45,null,52,null,
+        41,null,48,null, 41,null,48,null,
+        48,null,55,null, 48,null,55,null,
+        43,null,50,null, 43,null,50,null,
+        41,null,48,null, 41,null,48,null,
+        48,null,55,null, 48,null,55,null
+      ]
+    }
+  };
+
+  const chiptune = {
+    ctx: null,
+    master: null,
+    timerId: null,
+    playing: false,
+    stepDur: 0.2,
+    stepIndex: 0,
+    nextTime: 0,
+    melody: null,
+    bass: null,
+
+    ensureCtx(){
+      if(this.ctx) return this.ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      try{
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0;
+        this.master.connect(this.ctx.destination);
+      }catch(e){
+        this.ctx = null;
+      }
+      return this.ctx;
+    },
+
+    play(trackKey){
+      const ctx = this.ensureCtx();
+      if(!ctx) return;
+      if(ctx.state === 'suspended'){
+        ctx.resume().catch(()=>{});
+      }
+      const t = BGM_TRACKS[trackKey];
+      if(!t) return;
+
+      this.stop(true);
+
+      this.melody = t.melody;
+      this.bass = t.bass;
+      const rate = t.rate || 1;
+      this.stepDur = (60 / t.bpm / 2) / rate;
+
+      this.stepIndex = 0;
+      this.nextTime = ctx.currentTime + 0.06;
+      this.playing = true;
+
+      this.applyVolume();
+
+      if(this.timerId) clearInterval(this.timerId);
+      this.timerId = setInterval(()=>this.tick(), 25);
+    },
+
+    tick(){
+      if(!this.playing || !this.ctx) return;
+      const horizon = this.ctx.currentTime + 0.2;
+      while(this.nextTime < horizon){
+        this.scheduleStep(this.stepIndex, this.nextTime);
+        this.nextTime += this.stepDur;
+        this.stepIndex++;
+      }
+    },
+
+    scheduleStep(step, time){
+      if(!this.melody || !this.bass) return;
+      const mi = step % this.melody.length;
+      const bi = step % this.bass.length;
+
+      const m = this.melody[mi];
+      if(m != null){
+        this.note(m, time, this.stepDur * 0.9, 'square', 0.10, 0.008);
+      }
+      const b = this.bass[bi];
+      if(b != null){
+        this.note(b, time, this.stepDur * 1.9, 'triangle', 0.15, 0.02);
+      }
+    },
+
+    note(midi, time, dur, type, vol, attack){
+      if(!this.ctx || !this.master) return;
+      try{
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(midiToFreq(midi), time);
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.linearRampToValueAtTime(vol, time + attack);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+        o.connect(g);
+        g.connect(this.master);
+        o.start(time);
+        o.stop(time + dur + 0.05);
+      }catch(e){}
+    },
+
+    stop(immediate){
+      this.playing = false;
+      if(this.timerId){ clearInterval(this.timerId); this.timerId = null; }
+      if(this.ctx && this.master && !immediate){
+        try{
+          const t = this.ctx.currentTime;
+          this.master.gain.cancelScheduledValues(t);
+          this.master.gain.setTargetAtTime(0, t, 0.06);
+        }catch(e){}
+      }
+    },
+
+    applyVolume(){
+      if(!this.ctx || !this.master) return;
+      const target = bgmMuted ? 0 : Math.max(0, Math.min(1, audioVolume * 0.22));
+      try{
+        const t = this.ctx.currentTime;
+        this.master.gain.cancelScheduledValues(t);
+        this.master.gain.setTargetAtTime(target, t, 0.05);
+      }catch(e){
+        this.master.gain.value = target;
+      }
+    }
+  };
+
+  function playBgm(){ chiptune.play('business'); }
+  function playEndingBgm(){ chiptune.play('ending'); }
+  function pauseBgm(){ chiptune.stop(); }
+  function pauseEndingBgm(){ chiptune.stop(); }
+  function applyBgmVolume(){ chiptune.applyVolume(); }
+
+  // ============ 音效 ============
+  function beep(freq=660, dur=0.08, type='sine'){
+    if(audioVolume <= 0) return;
+    try{
+      const ctx = chiptune.ensureCtx();
+      if(!ctx) return;
+      if(ctx.state === 'suspended'){ ctx.resume().catch(()=>{}); }
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.value = audioVolume * 0.15;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+      o.stop(ctx.currentTime + dur + 0.02);
+    }catch(e){}
+  }
+
+  // ============ 工具 ============
+  function isImagePath(p){
+    return p && (/\.(png|jpe?g|gif|webp)$/i.test(p) || p.includes('/'));
+  }
+
+  function setSpriteImage(el, imgPath){
+    if(!imgPath) return;
+    if(!isImagePath(imgPath)){
+      el.innerText = imgPath;
+      el.style.backgroundImage = '';
+      return;
+    }
+    el.innerText = '';
+    el.style.backgroundImage = '';
+    const testImg = new Image();
+    testImg.onload = function(){
+      el.innerText = '';
+      el.style.backgroundImage = `url('${imgPath}')`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.style.backgroundRepeat = 'no-repeat';
+    };
+    testImg.onerror = function(){
+      el.innerText = '图片加载失败\n' + imgPath;
+      el.style.backgroundImage = '';
+      el.style.color = '#c00';
+      el.style.fontSize = '12px';
+      el.style.lineHeight = '1.3';
+      el.style.textAlign = 'center';
+      el.style.whiteSpace = 'pre-wrap';
+    };
+    testImg.src = imgPath;
+  }
+
+  function setPotFoodImage(foodName){
+    const img = FOOD_IMG[foodName];
+    if(img){
+      potFood.innerText = '';
+      potFood.style.backgroundImage = `url('${img}')`;
+      potFood.style.backgroundSize = 'contain';
+      potFood.style.backgroundRepeat = 'no-repeat';
+      potFood.style.backgroundPosition = 'center';
+      potFood.classList.add('visible');
+    } else {
+      potFood.style.backgroundImage = '';
+      potFood.innerText = '🍽️';
+      potFood.classList.add('visible');
+    }
+    potEmptyHint.style.display = 'none';
+  }
+
+  function hidePotFood(){
+    potFood.innerText = '';
+    potFood.style.backgroundImage = '';
+    potFood.classList.remove('visible');
+    potEmptyHint.style.display = 'block';
+  }
+
+  function updateCoinUI(){
+    coinCount.innerText = coins;
+    startCoin.innerText = coins;
+  }
+  function updateDayUI(){
+    dayCount.innerText = day;
+    startDayCount.innerText = day;
+  }
+  function showToast(text, ms=1400){
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerText = text;
+    businessScreen.appendChild(t);
+    setTimeout(()=> t.remove(), ms);
+  }
+
+  // ============ 嬢嬢气泡 ============
+  function showPlayerBubblePersistent(){
+    if(!playerBubble) return;
+    playerBubbleText.innerText = '抱歉可以再说一下你的要求吗？';
+    playerBubble.classList.add('show');
+  }
+  function hidePlayerBubble(){
+    if(!playerBubble) return;
+    playerBubble.classList.remove('show');
+  }
+
+  playerBubble.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(!currentCustomer || currentCustomer.receivedFood) {
+      hidePlayerBubble();
+      return;
+    }
+    const c = currentCustomer;
+    // 顾客重说完整要求
+    c.dialog.innerText = c.fullOrder;
+    // 10 秒后回到原来的生气聊天
+    if(c.upsetDialogTimer) clearTimeout(c.upsetDialogTimer);
+    c.upsetDialogTimer = setTimeout(()=>{
+      if(currentCustomer === c && c.isUpset){
+        c.dialog.innerText = c.type.upsetMsg;
+      }
+    }, DIALOG_HIDE_TIME);
+    hidePlayerBubble();
+    beep(760, .06);
+  });
+
+  // ============ 食材面板构建 ============
+  function createIngredientBtn(name, type){
+    const btn = document.createElement('div');
+    const sizeClass = (type === 'raw') ? 'lg' : 'md';
+    btn.className = 'ingredient-item ' + sizeClass;
+    btn.dataset.name = name;
+    btn.dataset.type = type;
+    const img = ITEM_IMG[name];
+    if(img){
+      btn.style.backgroundImage = `url('${img}')`;
+      btn.innerText = '';
+    } else {
+      btn.innerText = name;
+    }
+    btn.addEventListener('click', ()=> handleIngredientClick(type, name, btn));
+    return btn;
+  }
+
+  function buildIngredientRows(){
+    spicesRow.innerHTML = '';
+    herbsRow.innerHTML = '';
+    rawsRow.innerHTML = '';
+    SPICES.forEach(n => spicesRow.appendChild(createIngredientBtn(n, 'spice')));
+    HERBS.forEach(n => herbsRow.appendChild(createIngredientBtn(n, 'herb')));
+    RAWS.forEach(n => rawsRow.appendChild(createIngredientBtn(n, 'raw')));
+  }
+
+  // ============ 食材选择 & 自动出锅 ============
+  function handleIngredientClick(type, name, btnEl){
+    if(pot.cooked){
+      showToast('已出锅，请先处理～');
+      return;
+    }
+    if(type === 'spice'){
+      if(pot.selectedSpice === name){
+        pot.selectedSpice = null;
+        btnEl.classList.remove('selected');
+      } else {
+        pot.selectedSpice = name;
+        spicesRow.querySelectorAll('.ingredient-item').forEach(el => el.classList.remove('selected'));
+        btnEl.classList.add('selected');
+      }
+    } else if(type === 'herb'){
+      if(pot.selectedHerb === name){
+        pot.selectedHerb = null;
+        btnEl.classList.remove('selected');
+      } else {
+        pot.selectedHerb = name;
+        herbsRow.querySelectorAll('.ingredient-item').forEach(el => el.classList.remove('selected'));
+        btnEl.classList.add('selected');
+      }
+    } else if(type === 'raw'){
+      if(pot.selectedRaw === name){
+        pot.selectedRaw = null;
+        btnEl.classList.remove('selected');
+      } else {
+        pot.selectedRaw = name;
+        rawsRow.querySelectorAll('.ingredient-item').forEach(el => el.classList.remove('selected'));
+        btnEl.classList.add('selected');
+      }
+    }
+    updatePotFromSelection();
+  }
+
+  function updatePotFromSelection(){
+    if(pot.selectedSpice && pot.selectedHerb && pot.selectedRaw){
+      pot.cooked = true;
+      const food = RAW_TO_FOOD[pot.selectedRaw];
+      setPotFoodImage(food);
+      potLabel.innerText = food;
+      potArea.classList.add('cookable');
+      beep(920,.1); setTimeout(()=>beep(1200,.12),110);
+      showToast('出锅啦！拖到顾客或垃圾桶吧～');
+    } else {
+      pot.cooked = false;
+      potArea.classList.remove('cookable');
+      hidePotFood();
+      const parts = [];
+      if(pot.selectedSpice) parts.push(pot.selectedSpice);
+      if(pot.selectedHerb) parts.push(pot.selectedHerb);
+      if(pot.selectedRaw) parts.push(pot.selectedRaw);
+      potLabel.innerText = parts.length ? parts.join(' + ') : '空';
+    }
+  }
+
+  function resetPot(){
+    pot = { selectedSpice:null, selectedHerb:null, selectedRaw:null, cooked:false };
+    document.querySelectorAll('.ingredient-item.selected').forEach(el => el.classList.remove('selected'));
+    hidePotFood();
+    potLabel.innerText = '空';
+    potArea.classList.remove('cookable');
+  }
+
+  // ============ 顾客逻辑 ============
+  function clearCustomerTimers(c){
+    if(!c) return;
+    if(c.normalTimer) clearTimeout(c.normalTimer);
+    if(c.upsetDialogTimer) clearTimeout(c.upsetDialogTimer);
+    if(c.leaveTimer) clearTimeout(c.leaveTimer);
+  }
+
+  function removeCurrentCustomer(){
+    if(currentCustomer){
+      clearCustomerTimers(currentCustomer);
+      if(currentCustomer.el) currentCustomer.el.remove();
+      currentCustomer = null;
+    }
+    hidePlayerBubble();
+  }
+
+  function scheduleNextCustomer(delay = NEXT_CUSTOMER_DELAY){
+    if(customerRespawnTimer) clearTimeout(customerRespawnTimer);
+    customerRespawnTimer = setTimeout(()=>{
+      if(gameActive) spawnCustomer();
+    }, delay);
+  }
+
+  function spawnCustomer(){
+    if(!gameActive || currentCustomer) return;
+
+    const type = CUSTOMER_TYPES[Math.floor(Math.random()*CUSTOMER_TYPES.length)];
+
+    const wantFood = FOOD_LIST[Math.floor(Math.random()*FOOD_LIST.length)];
+    const wantRaw = Object.keys(RAW_TO_FOOD).find(k => RAW_TO_FOOD[k] === wantFood);
+    const wantSpice = SPICES[Math.floor(Math.random()*SPICES.length)];
+    const wantHerb = HERBS[Math.floor(Math.random()*HERBS.length)];
+
+    const fullOrder = type.normalMsgTemplate
+      .replace('${food}', wantFood)
+      .replace('${spice}', wantSpice)
+      .replace('${herb}', wantHerb);
+
+    const el = document.createElement('div');
+    el.className = 'customer-item';
+
+    const leftPercent = 12 + Math.random()*44;
+    el.style.left = leftPercent + '%';
+    el.style.top = 'calc(73px + 2.25cm)';
+
+    if(leftPercent <= 50){
+      el.classList.add('dialog-right');
+    } else {
+      el.classList.add('dialog-left');
+    }
+
+    const sprite = document.createElement('div');
+    sprite.className = 'customer-sprite';
+    setSpriteImage(sprite, type.normalEmoji);
+
+    const dialog = document.createElement('div');
+    dialog.className = 'customer-dialog';
+    dialog.innerText = fullOrder;
+
+    el.appendChild(sprite);
+    el.appendChild(dialog);
+    customerArea.appendChild(el);
+
+    const c = {
+      type, el, sprite, dialog,
+      isUpset:false,
+      receivedFood:false,
+      normalTimer:null,
+      upsetDialogTimer:null,
+      leaveTimer:null,
+      wantSpice, wantHerb, wantRaw, wantFood,
+      fullOrder,
+      hasReAsked:false,
+    };
+    currentCustomer = c;
+
+    // 35 秒内没给对 → 顾客变生气，嬢嬢气泡出现
+    c.normalTimer = setTimeout(()=>{
+      if(currentCustomer !== c || c.receivedFood) return;
+      c.isUpset = true;
+      setSpriteImage(c.sprite, type.upsetEmoji);
+      c.dialog.innerText = type.upsetMsg;
+      showPlayerBubblePersistent();
+      beep(420, .15, 'sawtooth');
+    }, COOK_FULL_TIME);
+  }
+
+  function giveFoodToCustomer(customer){
+    if(!customer || customer.receivedFood) return;
+    const c = customer;
+    const type = c.type;
+
+    if(c.normalTimer) clearTimeout(c.normalTimer);
+    if(c.upsetDialogTimer) clearTimeout(c.upsetDialogTimer);
+    hidePlayerBubble();
+
+    const isCorrect =
+      c.wantSpice === pot.selectedSpice &&
+      c.wantHerb === pot.selectedHerb &&
+      c.wantRaw === pot.selectedRaw;
+
+    if(isCorrect){
+      c.receivedFood = true;
+      // 35 秒内给对得 5 金币，35 秒后（已生气）给对得 3 金币
+      const earned = c.isUpset ? 3 : 5;
+      coins += earned;
+      updateCoinUI();
+      beep(880, .12); setTimeout(()=>beep(1180,.12), 100);
+
+      // 得到食物后变成常规站立
+      setSpriteImage(c.sprite, type.normalEmoji);
+      c.isUpset = false;
+      c.dialog.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.innerText = type.thanksMsg;
+      c.dialog.appendChild(msg);
+
+      const cont = document.createElement('button');
+      cont.className = 'continue-btn';
+      cont.innerText = '继续';
+      cont.onclick = (e)=>{
+        e.stopPropagation();
+        finishCustomer(c);
+      };
+      c.dialog.appendChild(cont);
+
+      // 显示谢谢后 5 秒离开，然后等 5 秒下一位
+      c.leaveTimer = setTimeout(()=> finishCustomer(c), 5000);
+
+      resetPot();
+
+      if(coins >= COIN_GOAL){
+        triggerEnding();
+      }
+    } else {
+      // 给错食物：不得金币，顾客走掉
+      setSpriteImage(c.sprite, type.upsetEmoji);
+      c.dialog.innerText = '这不是我要的……';
+      beep(220, .25, 'sawtooth');
+      c.leaveTimer = setTimeout(()=> finishCustomer(c), 900);
+      resetPot();
+    }
+  }
+
+  function finishCustomer(c){
+    if(currentCustomer !== c) return;
+    if(c.leaveTimer) clearTimeout(c.leaveTimer);
+    if(c.el) c.el.remove();
+    currentCustomer = null;
+    hidePlayerBubble();
+    if(gameActive) scheduleNextCustomer(NEXT_CUSTOMER_DELAY);
+  }
+
+  // ============ 拖拽食物给顾客 / 垃圾桶 ============
+  let dragging = false;
+  let ghost = null;
+
+  function getCookedFoodName(){
+    if(!pot.cooked || !pot.selectedRaw) return null;
+    return RAW_TO_FOOD[pot.selectedRaw];
+  }
+
+  potArea.addEventListener('pointerdown', (e)=>{
+    if(!pot.cooked) return;
+    e.preventDefault();
+    dragging = true;
+    const foodName = getCookedFoodName();
+    const img = FOOD_IMG[foodName];
+
+    ghost = document.createElement('div');
+    ghost.id = 'drag-ghost';
+    if(img){
+      ghost.style.backgroundImage = `url('${img}')`;
+      ghost.style.backgroundSize = 'contain';
+      ghost.style.backgroundRepeat = 'no-repeat';
+      ghost.style.backgroundPosition = 'center';
+      ghost.innerText = '';
+    } else {
+      ghost.innerText = '🍽️';
+    }
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top  = e.clientY + 'px';
+    document.body.appendChild(ghost);
+    potArea.setPointerCapture(e.pointerId);
+    beep(700,.05);
+  });
+
+  window.addEventListener('pointermove', (e)=>{
+    if(!dragging || !ghost) return;
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top  = e.clientY + 'px';
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const custEl = target ? target.closest('.customer-item') : null;
+    document.querySelectorAll('.customer-item').forEach(el=>{
+      el.classList.toggle('dragover', el === custEl);
+    });
+    const trashEl = target ? target.closest('.trash-area') : null;
+    if (trashArea) trashArea.classList.toggle('dragover', !!trashEl);
+  });
+
+  window.addEventListener('pointerup', (e)=>{
+    if(!dragging) return;
+    dragging = false;
+    document.querySelectorAll('.customer-item').forEach(el=>el.classList.remove('dragover'));
+    if (trashArea) trashArea.classList.remove('dragover');
+
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const custEl = target ? target.closest('.customer-item') : null;
+    const trashEl = target ? target.closest('.trash-area') : null;
+
+    if(ghost){ ghost.remove(); ghost = null; }
+
+    if(trashEl && pot.cooked){
+      if(coins > 0) coins -= 1;
+      updateCoinUI();
+      resetPot();
+      showToast('扔掉了，扣1金币');
+      beep(300, .2, 'sawtooth');
+      return;
+    }
+
+    if(custEl && currentCustomer && currentCustomer.el === custEl){
+      if(pot.cooked){
+        giveFoodToCustomer(currentCustomer);
+      }
+    }
+  });
+
+  // ============ 结局 / 天数 ============
+  function triggerEnding(){
+    gameActive = false;
+    if(customerRespawnTimer) clearTimeout(customerRespawnTimer);
+    removeCurrentCustomer();
+    resetPot();
+    hidePlayerBubble();
+    businessScreen.classList.add('hidden');
+    endingScreen.classList.remove('hidden');
+    playEndingBgm();
+    beep(880,.15); setTimeout(()=>beep(1100,.15),150); setTimeout(()=>beep(1320,.25),300);
+  }
+
+  $('btn-next-day').onclick = ()=>{
+    day += 1;
+    coins = 0;
+    updateCoinUI();
+    updateDayUI();
+    endingScreen.classList.add('hidden');
+    startBusiness();
+  };
+
+  // ============ 开始营业 ============
+  function startBusiness(){
+    gameActive = true;
+    playBgm();
+    businessScreen.classList.remove('hidden');
+    startScreen.classList.add('hidden');
+    endingScreen.classList.add('hidden');
+    removeCurrentCustomer();
+    hidePlayerBubble();
+    if(customerRespawnTimer) clearTimeout(customerRespawnTimer);
+    resetPot();
+    updateCoinUI();
+    updateDayUI();
+    setTimeout(()=>{ if(gameActive) spawnCustomer(); }, 400);
+  }
+
+  $('btn-start').onclick = ()=>{
+    beep(660,.08);
+    startBusiness();
+  };
+
+  // ============ 返回主界面 ============
+  function backToHome(){
+    gameActive = false;
+    if(customerRespawnTimer) clearTimeout(customerRespawnTimer);
+    customerRespawnTimer = null;
+    removeCurrentCustomer();
+    resetPot();
+    hidePlayerBubble();
+    updateCoinUI();
+    updateDayUI();
+    settingsPop.classList.add('hidden');
+    businessScreen.classList.add('hidden');
+    endingScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+    pauseBgm();
+  }
+
+  $('btn-back-home').onclick = (e)=>{
+    e.stopPropagation();
+    beep(520,.08);
+    backToHome();
+  };
+
+  // ============ 设置 ============
+  function applyBrightness(v){
+    document.getElementById('game-container').style.filter = `brightness(${v})`;
+  }
+  $('start-brightness').addEventListener('input', e=>{
+    applyBrightness(parseFloat(e.target.value));
+    $('biz-brightness').value = e.target.value;
+  });
+  $('start-volume').addEventListener('input', e=>{
+    audioVolume = parseFloat(e.target.value);
+    $('biz-volume').value = e.target.value;
+    applyBgmVolume();
+  });
+  $('biz-brightness').addEventListener('input', e=>{
+    applyBrightness(parseFloat(e.target.value));
+    $('start-brightness').value = e.target.value;
+  });
+  $('biz-volume').addEventListener('input', e=>{
+    audioVolume = parseFloat(e.target.value);
+    $('start-volume').value = e.target.value;
+    applyBgmVolume();
+  });
+
+  $('start-btn-settings').onclick = (e)=>{
+    e.stopPropagation();
+    startSettingsPop.classList.toggle('hidden');
+  };
+  $('btn-settings').onclick = (e)=>{
+    e.stopPropagation();
+    settingsPop.classList.toggle('hidden');
+  };
+
+  document.addEventListener('click', (e)=>{
+    if(!startSettingsPop.classList.contains('hidden') &&
+       !startSettingsPop.contains(e.target) &&
+       e.target.id !== 'start-btn-settings'){
+      startSettingsPop.classList.add('hidden');
+    }
+    if(!settingsPop.classList.contains('hidden') &&
+       !settingsPop.contains(e.target) &&
+       e.target.id !== 'btn-settings'){
+      settingsPop.classList.add('hidden');
+    }
+  });
+
+  // ============ 初始化 ============
+  buildIngredientRows();
+  updateCoinUI();
+  updateDayUI();
+  resetPot();
+  document.addEventListener('dragstart', e => e.preventDefault());
+  applyBgmVolume();
+
+})();
+</script>
+</body>
+</html>
